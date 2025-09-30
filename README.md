@@ -1,17 +1,17 @@
 # yoyo 🔑
 
-**yoyo* is a lightweight local password manager app written in C.
+**yoyo** is a lightweight local password manager app written in C.
 It uses [libsodium](https://doc.libsodium.org/) for encryption and [Jansson](https://digip.org/jansson/) for JSON management.
 
 Passwords are encrypted with a master key derived from a master password which the user sets, and the vault is stored at `$YOYO_VAULT`.
 
 
 ## Features
-- 🔐 Strong encryption with [libsodium](https://doc.libsodium.org/).
-- 📂 Vault stored locally as an encrypted JSON file (`$YOYO_VAULT`).
+- Strong encryption with [libsodium](https://doc.libsodium.org/).
+- Vault stored locally as an encrypted JSON file (`$YOYO_VAULT`).
 - Simple CLI commands:
   - `yoyo init` - initialize a new vault.
-  - `yoyo add <service> <uid> <password> - add an entry
+  - `yoyo add <service> <uid> <password>` - add an entry
   - (others not implemented yet. check them in .idea)
   
 
@@ -22,14 +22,14 @@ Passwords are encrypted with a master key derived from a master password which t
 - `libsodium` and `jansson` (install with your package manager/ from their websites)
 
 ### Build
-    clang -o yoyo yoyo.c common.c -ljansson -lsodium
+    `clang -o yoyo yoyo.c common.c -ljansson -lsodium`
 
 ---
 
 ## Usage
 
 ### Initialize a vault
-    yoyo init
+    `yoyo init`
 
 - You’ll be asked to enter and confirm a master password.
 - Creates ~/.yoyo (encrypted vault).
