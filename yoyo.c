@@ -34,7 +34,7 @@ int main(int argc, char *argv[argc + 1])
             exit(16);
         }
 
-        if (access("/home/gth/.yoyo", F_OK) != 0)
+        if (access(get_yoyo_path(), F_OK) != 0)
         {
             fprintf(stderr, "Vault not initialized. Run `yoyo init` first.\n");
             exit(11);
@@ -56,27 +56,42 @@ int main(int argc, char *argv[argc + 1])
     }
     else if (strcmp(argv[1], "get") == 0)
     {
+        if (argc < 3)
+        {
+            fprintf(stderr, "Usage: yoyo get <service>\n");
+            exit(17);
+        }
+        char *masterPassword = getpass("Enter your master password: ");
         // getPassword
-        // getFromYoyo();
+        getFromYoyo(argv[2], masterPassword);
     }
     else if (strcmp(argv[1], "list") == 0)
     {
-        // listAllPasswords
-        // showAllInYoyo();
+        char *masterPassword = getpass("Enter your master password: ");
+        showAllInYoyo(masterPassword);
     }
-    else if (strcmp(argv[1], "-h") == 0 || (strcmp(argv[1], "--help") == 0))
+    else if (strcmp(argv[1], "help") == 0)
     {
         fputs(YOYO_USAGE, stdout);
-        return (0);
     }
-    else if (strcmp(argv[1], "-v") == 0 || (strcmp(argv[1], "--version") == 0))
+    else if (strcmp(argv[1], "version") == 0)
     {
         fputs(YOYO_VER, stdout);
-        return (0);
     }
     else if (strcmp(argv[1], "status") == 0)
     {
-        // fputs("Your Yoyo vault lives at %s", yoyo_location);
+        if (access(get_yoyo_path(), F_OK) != 0)
+            fputs("Use yoyo init to start securing your passwords with Yoyo\n", stdout);
+        else
+            printf("Your Yoyo vault lives at %s\n", get_yoyo_path());
+    }
+    else if (strcmp(argv[1], "gen") == 0)
+    {
+        // generate password and show it
+    }
+    else
+    {
+        fputs("Unknown command. Use yoyo help to see help message.\n", stdout);
     }
 
     return (0);
