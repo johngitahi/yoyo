@@ -1,14 +1,15 @@
-#ifndef YOYO_COMMON_H
-#define YOYO_COMMON_H
+#ifndef YOYO_VAULT_H
+#define YOYO_VAULT_H
 
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <ctype.h>
 #if defined(_WIN32)
 #include <windows.h>
 #include <process.h>
 #include <direct.h>
-#define mkdir(path, mode) _mkdir(path) // IGNORE mkdir in windows
+#define mkdir(path, mode) _mkdir(path)
 #define PATH_SEP "\\"
 #else
 #define PATH_SEP "/"
@@ -38,21 +39,26 @@
 	"Your Yoyo vault is already set up.\n" \
 	"Use `yoyo add` to store a password, or `yoyo list` to view saved passwords.\n"
 
-#define YOYO_VER "v0.0\n"
+#define YOYO_VER "v0.0"
 #define YOYO_VAULT ".yoyo"
+#define TIMEDOWN 60
 
 
 #define KEY_BYTES 32        // 256-bit encryption key
 
 #define SALT_BYTES crypto_pwhash_SALTBYTES
 
-const char *get_home_dir();
-const char *get_yoyo_path();
+
 void initYoyoVault();
 json_t *readYoyoVault(char* masterPassword);
 void addToYoyo(json_t *yoyoVault, const char *service, const char *uid, const char *servicePassword, char *masterPassword);
-void copy_to_clipboard(const char *text, int timeDown);
 void getFromYoyo(const char *service,char *masterPassword);
 void showAllInYoyo(char *masterPassword);
+
+const char *get_yoyo_path();
+void copy_to_clipboard(const char *text, int timeDown);
+const char *get_home_dir();
+
+void generatePassphrase(const char *wordlist_path, size_t words);
 
 #endif

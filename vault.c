@@ -1,100 +1,7 @@
-#include "common.h"
-
-const char *get_home_dir()
-{
-#if defined(_WIN32)
-    return getenv("USERPROFILE");
-#else
-    return getenv("HOME");
-#endif
-}
-
-const char *get_yoyo_path()
-{
-    static char fullpath[512];
-    const char *home = get_home_dir();
-    if (!home)
-        return NULL;
-    snprintf(fullpath, sizeof(fullpath), "%s%s%s", home, PATH_SEP, YOYO_VAULT);
-    return fullpath;
-}
-
-void copy_to_clipboard(const char *text, int timeDown)
-{
-#if defined(__linux)
-    // linux uses xclip clipboard
-    {
-        FILE *pipe = popen("xclip -selection clipboard", "w");
-        if (pipe)
-        {
-            fputs(text, pipe);
-            pclose(pipe);
-        }
-        printf("Password copied. Will clear in %d seconds.\n", timeDown);
-
-        if (fork() == 0)
-        {
-            sleep(timeDown);
-            FILE *clr = popen("xclip -selection clipboard", "w");
-            if (clr)
-            {
-                fputs("", clr);
-                pclose(clr);
-            }
-            printf("Clipboard cleared.\n");
-            _exit(0);
-        }
-    }
-
-#elif defined(__APPLE__)
-    {
-        FILE *PIPE = popen("pbcopy", "w");
-        if (pipe)
-        {
-            fputs(text, pipe);
-            pclose(pipe);
-        }
-        printf("Password copied. Will clear in %d seconds.\n", timeDown);
-
-        if (fork() == 0)
-        {
-            sleep(timeDown);
-            FILE *clr = popen("pbcopy", "w");
-            if (clr)
-            {
-                fputs("", clr);
-                pclose(clr);
-            }
-            printf("Clipboard cleared.\n");
-            _exit(0);
-        }
-    }
-
-#elif define(_WIN32)
-    {
-        if (OpenClipboard(NULL))
-        {
-            EmptyClipboard();
-            HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, strlen(text) + 1);
-            memcpy(GlobalLock(hMem), text, strlen(text) + 1);
-            GlobalUnlock(hMem);
-            SetClipboardData(CF_TEXT, hMem);
-            CloseClipboard();
-        }
-        printf("Password copied. Will clear in %d seconds.\n", timeOut);
-
-        // TODO; check how to clear clipboard
-    }
-
-#else
-#error "unsupported platform"
-
-#endif
-}
+#include "vault.h"
 
 void initYoyoVault()
 {
-    // before we do anything, just check if a yoyo vault exists first
     if (access(get_yoyo_path(), F_OK) == 0)
     {
         fprintf(stderr, MSG_YOYO_ALREADY_INIT);
@@ -122,11 +29,9 @@ void initYoyoVault()
         exit(3);
     }
 
-    // 1. Generate salt on vault init
     unsigned char salt[SALT_BYTES];
     randombytes_buf(salt, sizeof salt);
 
-    // 2. Derive master key from password + salt
     unsigned char master_key[KEY_BYTES];
     if (crypto_pwhash(master_key, sizeof master_key, master_password, strlen(master_password), salt,
                       crypto_pwhash_OPSLIMIT_MODERATE, crypto_pwhash_MEMLIMIT_MODERATE,
@@ -136,16 +41,14 @@ void initYoyoVault()
         exit(2);
     }
 
-    // create initial json file and encrypt it
     json_t *vault_json = json_object();
     json_object_set_new(vault_json, "version", json_string(YOYO_VER));
     json_object_set_new(vault_json, "lastModified", json_string(currentTimeStr));
     json_object_set_new(vault_json, "entries", json_array());
 
     char *json_str = json_dumps(vault_json, JSON_INDENT(2));
-    json_decref(vault_json); // free the json ob
+    json_decref(vault_json);
 
-    // encrypt the file
     unsigned char nonce[crypto_secretbox_NONCEBYTES];
     randombytes_buf(nonce, sizeof nonce);
 
@@ -156,17 +59,17 @@ void initYoyoVault()
 
     crypto_secretbox_easy(ciphertext, (unsigned char *)json_str, json_len, nonce, master_key);
 
-    FILE *fp = fopen(get_yoyo_path(), "wb"); // TODO: Define a macro which allows user
-                                             // to choose storage location
-    if (!fp)
-        exit(6);
+    FILE *fp = fopen(get_yoyo_path(), "wb");
+	if (!fp) {
+		perror("fopen");
+		exit(6);
+	}
 
     fwrite(salt, 1, SALT_BYTES, fp);
     fwrite(nonce, 1, crypto_secretbox_NONCEBYTES, fp);
     fwrite(ciphertext, 1, json_len + crypto_secretbox_MACBYTES, fp);
     fclose(fp);
 
-    // wipe master key from memory
     sodium_memzero(master_key, sizeof(master_key));
     sodium_memzero(master_password, sizeof(master_password));
     sodium_memzero(rep_master_password, sizeof(rep_master_password));
@@ -221,7 +124,6 @@ json_t *readYoyoVault(char *masterPassword)
     }
     decrypted[decrypted_len] = '\0';
 
-    // convert the string to JSON now
     json_error_t error;
     json_t *vaultRepJSON = json_loads((const char *)decrypted, 0, &error);
     if (!vaultRepJSON)
@@ -232,7 +134,6 @@ json_t *readYoyoVault(char *masterPassword)
 
     return vaultRepJSON;
 
-    // collect garbage or whatever
     sodium_memzero(master_key, sizeof master_key);
     sodium_memzero(masterPassword, sizeof masterPassword);
     free(file_buffer);
@@ -250,16 +151,13 @@ void addToYoyo(json_t *yoyoVault, const char *service, const char *uid, const ch
         exit(14);
     }
 
-    // create a new json object for this new entry
     json_t *entry = json_object();
     json_object_set_new(entry, "service", json_string(service));
     json_object_set_new(entry, "uid", json_string(uid));
     json_object_set_new(entry, "password", json_string(servicePassword));
 
-    // Append to entries array
     json_array_append_new(entries, entry);
 
-    // update last modified
     char currentTimeStr[30];
     time_t now = time(NULL);
     struct tm *tm_info = localtime(&now);
@@ -270,7 +168,6 @@ void addToYoyo(json_t *yoyoVault, const char *service, const char *uid, const ch
     char *json_str = json_dumps(yoyoVault, JSON_INDENT(2));
     size_t json_len = strlen(json_str);
 
-    // generate a fresh nonce
     unsigned char nonce[crypto_secretbox_NONCEBYTES];
     randombytes_buf(nonce, sizeof nonce);
 
@@ -296,7 +193,7 @@ void addToYoyo(json_t *yoyoVault, const char *service, const char *uid, const ch
                       crypto_pwhash_OPSLIMIT_MODERATE, crypto_pwhash_MEMLIMIT_MODERATE,
                       crypto_pwhash_ALG_DEFAULT) != 0)
     {
-        printf("Key derivation failed (out of memory?)\n");
+        printf("Key derivation failed (out of memory)\n");
         exit(2);
     }
 
@@ -309,14 +206,12 @@ void addToYoyo(json_t *yoyoVault, const char *service, const char *uid, const ch
         exit(16);
     }
 
-    // -- overwrite vault file
     fp = fopen(get_yoyo_path(), "wb");
     fwrite(salt, 1, SALT_BYTES, fp);
     fwrite(nonce, 1, crypto_secretbox_NONCEBYTES, fp);
     fwrite(ciphertext, 1, json_len + crypto_secretbox_MACBYTES, fp);
     fclose(fp);
 
-    // --cleanup
     sodium_memzero(master_key, sizeof master_key);
     sodium_memzero(json_str, json_len);
     free(json_str);
@@ -326,23 +221,19 @@ void addToYoyo(json_t *yoyoVault, const char *service, const char *uid, const ch
 
 void getFromYoyo(const char *service_name, char *masterPassword)
 {
-    // check if yoyo vault exists
     if (access(get_yoyo_path(), F_OK) != 0)
     {
         fprintf(stderr, "Vault not initialized. Run `yoyo init` first.\n");
         exit(11);
     }
-
-    // TODO: consider adding a check to ensure this works after calling it. Also in yoyo.c where it
-    // is called
+	
     json_t *yoyoVaultJSON = readYoyoVault(masterPassword);
 
-    // lookup key
     json_t *entries = json_object_get(yoyoVaultJSON, "entries");
     if (!json_is_array(entries))
     {
         json_decref(yoyoVaultJSON);
-        fprintf(stderr, "Yoyo Vault Corrupted\n");
+        fprintf(stderr, "Yoyo Vault Corrupted: 'entries' is not an array\n");
         exit(14);
     }
 
@@ -353,18 +244,19 @@ void getFromYoyo(const char *service_name, char *masterPassword)
         json_t *service = json_object_get(entry, "service");
         json_t *password = json_object_get(entry, "password");
 
-        if (json_is_string(service) && strcmp(json_string_value(service), service_name) == 0)
-        {
-            if (json_is_string(password))
-            {
-                char *pw_copy = strdup(json_string_value(password));
-                json_decref(yoyoVaultJSON);
-                copy_to_clipboard(pw_copy, 60);
-            }
-        }
-    }
+		if (!json_is_string(service))
+			continue;
+		if (strcmp(json_string_value(service), service_name))
+			continue;
+		if (!json_is_string(password))
+			continue;
 
-    json_decref(yoyoVaultJSON);
+		char *pw_copy = strdup(json_string_value(password));
+		copy_to_clipboard(pw_copy, TIMEDOWN);
+		free(pw_copy);
+		json_decref(yoyoVaultJSON);
+		break;
+    }
 }
 
 void showAllInYoyo(char *masterPassword)
@@ -374,7 +266,7 @@ void showAllInYoyo(char *masterPassword)
     json_t *entries = json_object_get(yoyoVaultJSON, "entries");
     if (!json_is_array(entries))
     {
-        fprintf(stderr, "Corrupted yoyo vault.\n");
+        fprintf(stderr, "Yoyo Vault Corrupted: 'entries' is not an array\n");
         json_decref(yoyoVaultJSON);
         exit(14);
     }

@@ -6,7 +6,7 @@
  * if you see this, remember to live because you have one life only
  */
 
-#include "common.h"
+#include "vault.h"
 
 int main(int argc, char *argv[argc + 1])
 {
@@ -76,7 +76,7 @@ int main(int argc, char *argv[argc + 1])
     }
     else if (strcmp(argv[1], "version") == 0)
     {
-        fputs(YOYO_VER, stdout);
+        printf("%s\n", YOYO_VER);
     }
     else if (strcmp(argv[1], "status") == 0)
     {
@@ -87,7 +87,14 @@ int main(int argc, char *argv[argc + 1])
     }
     else if (strcmp(argv[1], "gen") == 0)
     {
-        // generate password and show it
+        size_t words = 4;
+		if (argc >= 3) {
+			words = strtoul(argv[2], NULL, 10);
+			if (words == 0) words = 4;
+			
+		}
+
+		generatePassphrase("words.txt", words);
     }
     else
     {

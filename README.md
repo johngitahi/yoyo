@@ -29,9 +29,7 @@ Passwords are encrypted with a master key derived from a master password which t
 
 ### Build
 ```bash
-mkdir build && cd build
-cmake ..
-make
+clang -o yoyo -lsodium -ljansson yoyo.c common.c clipboard.c
 ```
 
 ---
@@ -100,6 +98,8 @@ yoyo list
 - The master password is never stored, only used to derive a key.
 - Sensitive memory is wiped using `sodium_memzero`.
 
+**You can use the `devtest` tool to see what the yoyo vault looks like.** 
+
 ---
 
 ## Roadmap
@@ -107,6 +107,6 @@ yoyo list
 - [x] `yoyo list` – show saved services.
 - [x] `yoyo get <service>` – retrieve a password securely.
 - [ ] `yoyo rm <service>` – remove an entry.
-- [ ] `yoyo gen` – generate a secure password.
+- [x] `yoyo gen` – generate a secure password.
 - [ ] Better error messages and UX polish.
 - [ ] A Chrome extension to connect to yoyo.
