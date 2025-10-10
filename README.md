@@ -29,7 +29,13 @@ Passwords are encrypted with a master key derived from a master password which t
 
 ### Build
 ```bash
-clang -o yoyo -lsodium -ljansson yoyo.c common.c clipboard.c
+clang -o yoyo -lsodium -ljansson yoyo.c vault.c clipboard.c gen.c
+```
+
+### Archlinux
+Aur maintained by me.
+```bash
+yay -Sy yoyo
 ```
 
 ---

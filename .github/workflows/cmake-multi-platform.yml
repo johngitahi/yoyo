@@ -1,0 +1,54 @@
+name: CMake CLI Build
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Install dependencies depending on OS
+      - name: Install dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsodium-dev libjansson-dev pkg-config
+
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install libsodium jansson pkg-config
+
+      # Configure CMake (Linux)
+      - name: Configure CMake (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: cmake -B build -S .
+
+      # Configure CMake (macOS)
+      - name: Configure CMake (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          cmake -B build -S . \
+            -DCMAKE_INCLUDE_PATH=/opt/homebrew/include \
+            -DCMAKE_LIBRARY_PATH=/opt/homebrew/lib
+
+      # Build
+      - name: Build
+        run: cmake --build build --config Release
+
+      # Run tests
+      - name: Test
+        working-directory: build
+        run: ctest --output-on-failure -C Release
