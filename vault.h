@@ -39,7 +39,7 @@
 	"Your Yoyo vault is already set up.\n" \
 	"Use `yoyo add` to store a password, or `yoyo list` to view saved passwords.\n"
 
-#define YOYO_VER "v0.0"
+#define YOYO_VER "v0.1"
 #define YOYO_VAULT ".yoyo"
 #define TIMEDOWN 60
 
